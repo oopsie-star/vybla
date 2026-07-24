@@ -31,8 +31,11 @@ async def lifespan(_: FastAPI):
     try:
         yield
     finally:
+        # NOTE: do NOT delete_webhook() here. On Render's zero-downtime deploys
+        # the old instance shuts down AFTER the new one has already re-set the
+        # webhook, so deleting here would wipe the live webhook. The webhook is
+        # (re)set on every startup instead.
         await scheduler.stop()
-        await bot.delete_webhook()
         await bot.session.close()
 
 
