@@ -39,8 +39,9 @@ async def lifespan(_: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def health():
+    # Render's port scan / health check may use HEAD — answer both, never 405.
     return {"status": "ok", "service": "vybla"}
 
 
