@@ -53,3 +53,38 @@ On startup the webhook is registered at `{WEBHOOK_URL}/webhook/{BOT_TOKEN}`.
 ## Anonymity is real
 The bot never exposes who sent a vibe and never invents a "hint." `from_hash` is a
 one-way salted SHA-256, used only for rate-limiting and report-blocking.
+
+## Autonomous layer (no userbot)
+VYBLA runs itself through the **Bot API** — the bot is an admin of a channel and a
+group and does everything from there. There is deliberately **no Telethon userbot /
+user-account automation**: automating a personal account (auto-creating channels,
+looped promo posting, mass link-dropping) violates Telegram ToS and is the #1 cause
+of permanent account bans — the exact outcome we must avoid. So the one action a bot
+can't do (creating the channel/group) is a 5-minute manual step; everything after is
+automatic.
+
+**One-time setup:**
+1. Run the updated `supabase.sql` (adds the `system` table).
+2. Create a **channel** (e.g. "VYBLA — честные вайбы") and a **supergroup**
+   ("VYBLA CHAT 💬").
+3. Add **@vyblabot** as **admin** to both (channel: post messages; group: delete
+   messages + the rest). The bot auto-captures both ids via `my_chat_member` and
+   stores them in `system` — check for the "✅ Привязан …" DM to your `ADMIN_ID`.
+4. In @BotFather → `/setprivacy` → **Disable** (so the bot sees all group messages
+   to moderate; being admin also grants this).
+
+**Then, autonomously:**
+- every `AUTOPOST_MINUTES` (default 30): posts a random anonymized vibe to the channel;
+- every `TOP_MINUTES` (default 60): posts a Top-3 leaderboard to the group;
+- moderates the group: deletes foreign links/@handles always, and (if `GROUP_STRICT=1`)
+  any non-VYBLA-link message, with a self-deleting warning.
+
+**Free-tier note:** the scheduler runs in-process, so keep the cron-job.org pinger
+hitting `/` every 10 min — it both prevents Render's idle spin-down and keeps the
+loops alive. `GROUP_STRICT=0` relaxes the group to allow normal chat.
+
+## Why no `userbot.py` / `gen_session.py`
+These were requested but intentionally omitted: they automate a **user account**,
+which gets that account banned. All the autonomy they were meant to provide
+(auto-posting, moderation, leaderboard) is delivered above via the bot instead.
+Real engagement numbers are used in posts — no fabricated view counts.

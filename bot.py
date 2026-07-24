@@ -1,4 +1,5 @@
 """VYBLA bot: dispatcher, FSM, all handlers. Webhook-driven (see webhook.py)."""
+import asyncio
 import logging
 import os
 import random
@@ -11,11 +12,12 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import (
     Message, CallbackQuery, FSInputFile, BufferedInputFile,
-    PreCheckoutQuery,
+    PreCheckoutQuery, ChatMemberUpdated,
 )
 
 import db
 import cards
+import binding
 from cache import (
     redis, sender_hash, allow_guest, guest_locked, is_blocked, block_sender,
 )
@@ -27,6 +29,7 @@ from keyboards import (
 )
 from config import (
     BOT_TOKEN, REDIS_URL, MAX_VIBE_LEN, FEED_SAMPLE, MODES, ADMIN_ID,
+    BOT_USERNAME, GROUP_STRICT,
     t, lang_of, link_for,
 )
 
@@ -335,3 +338,81 @@ async def on_paid(message: Message):
     if payment.invoice_payload == PREMIUM_PAYLOAD:
         await db.set_premium(message.from_user.id, True)
         await message.answer(t(lang, "pay_success"))
+
+
+# --------------------------------------------------------------------------
+# Autonomous layer: auto-bind channel/group when the bot is promoted to admin
+# --------------------------------------------------------------------------
+@dp.my_chat_member()
+async def on_my_status(update: ChatMemberUpdated):
+    if update.new_chat_member.user.id != bot.id:
+        return
+    status = update.new_chat_member.status
+    chat = update.chat
+    if status not in ("administrator", "creator"):
+        return
+    if chat.type == "channel":
+        await binding.set_channel(chat.id)
+        label = "канал"
+    elif chat.type in ("group", "supergroup"):
+        await binding.set_group(chat.id)
+        label = "группа"
+    else:
+        return
+    log.info("bound %s %s (%s)", label, chat.title, chat.id)
+    if ADMIN_ID:
+        try:
+            await bot.send_message(
+                ADMIN_ID, f"✅ Привязан {label}: {chat.title} ({chat.id})")
+        except Exception:
+            pass
+
+
+async def _delete_and_warn(message: Message, warn_text: str):
+    """Delete an offending group message and post a self-destructing warning."""
+    try:
+        await message.delete()
+    except Exception:
+        return  # bot lacks delete rights; do nothing
+    try:
+        warn = await message.answer(warn_text)
+    except Exception:
+        return
+
+    async def _cleanup():
+        await asyncio.sleep(10)
+        try:
+            await bot.delete_message(warn.chat.id, warn.message_id)
+        except Exception:
+            pass
+
+    asyncio.create_task(_cleanup())
+
+
+@dp.message(F.chat.type.in_({"group", "supergroup"}))
+async def moderate_group(message: Message):
+    gid = binding.group_id()
+    if not gid or str(message.chat.id) != str(gid):
+        return  # only the bound funnel group is moderated
+    u = message.from_user
+    if not u or u.is_bot or u.id == ADMIN_ID:
+        return
+
+    txt = message.text or message.caption or ""
+    low = txt.lower()
+    botu = BOT_USERNAME.lower()
+    has_vybla_link = ("start=" in low and botu in low) or (f"t.me/{botu}?start=" in low)
+    if has_vybla_link:
+        return  # this is exactly what the group is for — allow it
+
+    foreign_link = ("t.me/" in low) or ("http" in low) or ("@" in low)
+    if foreign_link:
+        await _delete_and_warn(
+            message,
+            f"⛔️ Без своей VYBLA-ссылки тут нельзя. Создай в @{BOT_USERNAME} и кидай сюда.",
+        )
+    elif GROUP_STRICT and len(txt) > 5:
+        await _delete_and_warn(
+            message,
+            f"Кидай ссылку из @{BOT_USERNAME}, чтобы писать тут 🤝",
+        )

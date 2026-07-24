@@ -124,3 +124,28 @@ async def recent_feed(limit: int = 50) -> list[dict]:
         .limit(limit)
     )
     return res.data or []
+
+
+async def count_all_vibes() -> int:
+    res = await _x(
+        _client.table("vibes").select("id", count="exact").eq("is_reported", False)
+    )
+    return res.count or 0
+
+
+# --- system key/value + leaderboard (autonomous layer) ---------------------
+async def get_system(key: str) -> str | None:
+    res = await _x(_client.table("system").select("value").eq("key", key).limit(1))
+    return res.data[0]["value"] if res.data else None
+
+
+async def set_system(key: str, value: str) -> None:
+    await _x(_client.table("system").upsert({"key": key, "value": value}))
+
+
+async def get_top_users(limit: int = 3) -> list[dict]:
+    res = await _x(
+        _client.table("users").select("link_code,total_views,total_vibes")
+        .order("total_views", desc=True).limit(limit)
+    )
+    return res.data or []

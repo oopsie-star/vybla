@@ -45,6 +45,15 @@ FEED_SAMPLE = 5
 VIBES_PAGE_SIZE = 5
 PREMIUM_PRICE_STARS = 299
 
+# --- Autonomous layer ------------------------------------------------------
+# The bot auto-captures the channel/group ids when it is promoted to admin
+# (see the my_chat_member handler), so no manual id config is needed.
+AUTOPOST_MINUTES = int(os.getenv("AUTOPOST_MINUTES", "30"))  # channel post cadence
+TOP_MINUTES = int(os.getenv("TOP_MINUTES", "60"))            # leaderboard cadence
+# When True, non-link messages in the funnel group are removed. Set GROUP_STRICT=0
+# to only remove foreign links/@handles and allow normal chat.
+GROUP_STRICT = os.getenv("GROUP_STRICT", "1") == "1"
+
 # mode -> emoji + labels. Gradients live in cards.py.
 MODES = {
     "compliment": {"emoji": "🔥", "ru": "Комплимент", "en": "Compliment"},

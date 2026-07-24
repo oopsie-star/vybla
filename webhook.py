@@ -10,6 +10,8 @@ from fastapi import FastAPI, Request, Response
 from aiogram.types import Update
 
 from bot import bot, dp
+import binding
+import scheduler
 from config import WEBHOOK_PATH, WEBHOOK_FULL, WEBHOOK_SECRET
 
 log = logging.getLogger("vybla.webhook")
@@ -24,9 +26,12 @@ async def lifespan(_: FastAPI):
         drop_pending_updates=True,
     )
     log.info("Webhook set to %s", WEBHOOK_FULL)
+    await binding.load()          # restore bound channel/group ids
+    scheduler.start(bot)          # autopost + hourly leaderboard loops
     try:
         yield
     finally:
+        await scheduler.stop()
         await bot.delete_webhook()
         await bot.session.close()
 

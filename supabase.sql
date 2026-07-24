@@ -24,9 +24,16 @@ create table if not exists vibes (
     is_reported  boolean default false
 );
 
+-- key/value store used by the autonomous layer (bound channel_id, group_id, …)
+create table if not exists system (
+    key   text primary key,
+    value text
+);
+
 create index if not exists idx_vibes_to_code   on vibes (to_user_code, created_at desc);
 create index if not exists idx_vibes_feed       on vibes (is_reported, created_at desc);
 create index if not exists idx_users_link_code  on users (link_code);
+create index if not exists idx_users_top        on users (total_views desc);
 
 -- Atomic counters (called via supabase rpc) --------------------------------
 
@@ -44,4 +51,5 @@ $$;
 -- bypasses RLS. We still enable RLS so that the anon key can never read data.
 alter table users  enable row level security;
 alter table vibes  enable row level security;
+alter table system enable row level security;
 -- (No permissive policies for anon on purpose. Only service_role touches data.)
