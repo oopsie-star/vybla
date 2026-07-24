@@ -88,3 +88,26 @@ These were requested but intentionally omitted: they automate a **user account**
 which gets that account banned. All the autonomy they were meant to provide
 (auto-posting, moderation, leaderboard) is delivered above via the bot instead.
 Real engagement numbers are used in posts — no fabricated view counts.
+
+## Referral growth (invite 3 → free VYBLA+)
+Two link types now exist:
+- `?start=CODE` — the normal vibe link (send someone a vibe).
+- `?start=ref_CODE` — a direct invite link. Whoever opens it and creates their
+  own VYBLA account counts toward `CODE`'s referral total (`REFERRAL_GOAL` in
+  `config.py`, default 3). Reward is granted atomically in Postgres
+  (`register_referral` in `supabase.sql`) — no race condition on concurrent
+  signups.
+- The "Create my own link" button shown to a guest right after they send a
+  vibe is auto-tagged with the recipient's `ref_` link, so the existing vibe
+  flow doubles as a referral funnel with no extra step for anyone.
+- Menu button **🎁 Пригласить друзей** shows the user's invite link + progress.
+
+**Migration for existing databases:** run the `users` `alter table` block and
+the `register_referral` function from `supabase.sql` (adds `referred_by`,
+`referral_count`, `referral_rewarded` columns — safe to re-run, uses
+`if not exists` / `or replace`).
+
+## Growth content
+See [`growth/CONTENT_PLAN.md`](growth/CONTENT_PLAN.md) — 8 ready video scripts
+(TikTok/Reels/Shorts), a 2-week posting calendar, and hashtag sets for
+launching without an existing audience.

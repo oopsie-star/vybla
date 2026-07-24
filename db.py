@@ -41,18 +41,23 @@ async def _gen_unique_code() -> str:
     raise RuntimeError("Could not generate a unique link_code")
 
 
-async def get_or_create_user(user_id: int, username: str | None, lang: str) -> dict:
+async def get_or_create_user(
+    user_id: int, username: str | None, lang: str, referred_by: str | None = None,
+) -> tuple[dict, bool]:
+    """Return (user_row, was_just_created). referred_by is only ever applied on
+    creation — an existing user's referrer can't be changed after the fact."""
     existing = await get_user(user_id)
     if existing:
-        # keep username fresh
         if username and username != existing.get("username"):
             await _x(_client.table("users").update({"username": username}).eq("id", user_id))
             existing["username"] = username
-        return existing
+        return existing, False
     code = await _gen_unique_code()
     row = {"id": user_id, "username": username, "link_code": code, "lang": lang}
+    if referred_by and referred_by != code:
+        row["referred_by"] = referred_by
     res = await _x(_client.table("users").insert(row))
-    return res.data[0]
+    return res.data[0], True
 
 
 async def set_premium(user_id: int, value: bool = True) -> None:
@@ -65,6 +70,19 @@ async def increment_views(code: str) -> None:
 
 async def increment_vibes(code: str) -> None:
     await asyncio.to_thread(_client.rpc("increment_user_vibes", {"p_code": code}).execute)
+
+
+async def register_referral(referrer_code: str) -> tuple[int | None, bool]:
+    """Bump referrer_code's referral_count; auto-grants VYBLA+ at the goal.
+    Returns (new_count, reward_just_granted). new_count is None if the
+    referrer code doesn't exist."""
+    res = await asyncio.to_thread(
+        _client.rpc("register_referral", {"p_referrer_code": referrer_code}).execute
+    )
+    if not res.data:
+        return None, False
+    row = res.data[0]
+    return row.get("new_count"), bool(row.get("reward_granted"))
 
 
 # --- vibes -----------------------------------------------------------------

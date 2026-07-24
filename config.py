@@ -44,6 +44,7 @@ MAX_VIBE_LEN = 120
 FEED_SAMPLE = 5
 VIBES_PAGE_SIZE = 5
 PREMIUM_PRICE_STARS = 299
+REFERRAL_GOAL = 3  # invite this many -> free VYBLA+. Must match supabase.sql register_referral().
 
 # --- Autonomous layer ------------------------------------------------------
 # The bot auto-captures the channel/group ids when it is promoted to admin
@@ -81,6 +82,19 @@ TEXTS = {
         "btn_duel": "⚔️ Вайб-Дуэль",
         "btn_feed": "🌍 Лента",
         "btn_premium": "⭐️ Premium",
+        "btn_invite": "🎁 Пригласить друзей",
+
+        "invite_info": (
+            "🎁 Приглашай — получай Premium бесплатно\n\n"
+            "Твоя пригласительная ссылка:\n{link}\n\n"
+            "Приглашено: {count}/{goal}\n\n"
+            "Как только по твоей ссылке зайдут {goal} новых человека — "
+            "VYBLA+ включится сама, бесплатно 🖤"
+        ),
+        "invite_reward_dm": (
+            "🎉 {goal} человек зашли по твоей ссылке!\n"
+            "VYBLA+ активирован бесплатно — спасибо, что разносишь вайб 🖤"
+        ),
 
         "broken_link": "Ссылка битая 🤷",
         "rate_limited": "Подожди 5 минут, не спамь 🙃",
@@ -146,6 +160,19 @@ TEXTS = {
         "btn_duel": "⚔️ Vibe Duel",
         "btn_feed": "🌍 Feed",
         "btn_premium": "⭐️ Premium",
+        "btn_invite": "🎁 Invite friends",
+
+        "invite_info": (
+            "🎁 Invite friends — get Premium free\n\n"
+            "Your invite link:\n{link}\n\n"
+            "Invited: {count}/{goal}\n\n"
+            "Once {goal} new people join through your link, VYBLA+ "
+            "unlocks automatically, for free 🖤"
+        ),
+        "invite_reward_dm": (
+            "🎉 {goal} people joined through your link!\n"
+            "VYBLA+ is now active for free — thanks for spreading the vibe 🖤"
+        ),
 
         "broken_link": "Broken link 🤷",
         "rate_limited": "Wait 5 minutes, don't spam 🙃",

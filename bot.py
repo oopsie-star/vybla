@@ -29,7 +29,7 @@ from keyboards import (
 )
 from config import (
     BOT_TOKEN, REDIS_URL, MAX_VIBE_LEN, FEED_SAMPLE, MODES, ADMIN_ID,
-    BOT_USERNAME, GROUP_STRICT,
+    BOT_USERNAME, GROUP_STRICT, REFERRAL_GOAL,
     t, lang_of, link_for,
 )
 
@@ -86,6 +86,10 @@ async def cmd_start(message: Message, command: CommandObject, state: FSMContext)
     await state.clear()
     arg = (command.args or "").strip()
 
+    # Referral flow: /start ref_CODE -> owner flow, credits CODE on signup.
+    if arg.startswith("ref_"):
+        return await _show_owner_menu(message, referred_by=arg[4:])
+
     # Guest flow: arg is a link_code (optionally prefixed with duel_)
     code = arg[5:] if arg.startswith("duel_") else arg
     if code and code not in ("go",) and len(code) <= 12:
@@ -95,10 +99,26 @@ async def cmd_start(message: Message, command: CommandObject, state: FSMContext)
     await _show_owner_menu(message)
 
 
-async def _show_owner_menu(message: Message):
+async def _show_owner_menu(message: Message, referred_by: str | None = None):
     u = message.from_user
-    user = await db.get_or_create_user(u.id, u.username, lang_of(u.language_code))
+    user, created = await db.get_or_create_user(
+        u.id, u.username, lang_of(u.language_code), referred_by=referred_by,
+    )
     lang = user["lang"]
+
+    if created and user.get("referred_by"):
+        count, granted = await db.register_referral(user["referred_by"])
+        if granted:
+            referrer = await db.get_user_by_code(user["referred_by"])
+            if referrer:
+                try:
+                    await bot.send_message(
+                        referrer["id"],
+                        t(referrer["lang"], "invite_reward_dm", goal=REFERRAL_GOAL),
+                    )
+                except Exception as e:
+                    log.info("could not DM referral reward to %s: %s", referrer["id"], e)
+
     unread = await db.count_unread(user["link_code"])
     await message.answer(
         t(lang, "menu",
@@ -198,7 +218,7 @@ async def guest_write(message: Message, state: FSMContext):
                     pass
 
     await state.clear()
-    await message.answer(t(lang, "sent_ok"), reply_markup=guest_after_send(lang))
+    await message.answer(t(lang, "sent_ok"), reply_markup=guest_after_send(lang, code))
 
 
 # --------------------------------------------------------------------------
@@ -257,6 +277,20 @@ async def cb_feed(cq: CallbackQuery):
     for r in sample:
         lines.append(t(lang, "feed_item", text=r["text"]))
     await cq.message.answer("\n\n".join(lines))
+    await cq.answer()
+
+
+@dp.callback_query(F.data == "invite")
+async def cb_invite(cq: CallbackQuery):
+    user = await db.get_user(cq.from_user.id)
+    if not user:
+        return await cq.answer()
+    lang = user["lang"]
+    link = f"https://t.me/{BOT_USERNAME}?start=ref_{user['link_code']}"
+    await cq.message.answer(
+        t(lang, "invite_info", link=link,
+          count=user.get("referral_count", 0), goal=REFERRAL_GOAL),
+    )
     await cq.answer()
 
 

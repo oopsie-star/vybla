@@ -16,6 +16,7 @@ def main_menu(lang: str, code: str, unread: int) -> InlineKeyboardMarkup:
                               copy_text=CopyTextButton(text=link))],
         [InlineKeyboardButton(text=t(lang, "btn_duel"), callback_data="duel")],
         [InlineKeyboardButton(text=t(lang, "btn_feed"), callback_data="feed")],
+        [InlineKeyboardButton(text=t(lang, "btn_invite"), callback_data="invite")],
         [InlineKeyboardButton(text=t(lang, "btn_premium"), callback_data="premium")],
     ])
 
@@ -35,10 +36,12 @@ def vibe_actions(lang: str, vibe_id: str) -> InlineKeyboardMarkup:
     ]])
 
 
-def guest_after_send(lang: str) -> InlineKeyboardMarkup:
+def guest_after_send(lang: str, ref_code: str) -> InlineKeyboardMarkup:
+    # Tag this with the vibe recipient's code: if the guest goes on to create
+    # their own link, the recipient gets referral credit for growing VYBLA.
     return InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text=t(lang, "btn_create_own"),
-                             url=f"https://t.me/{BOT_USERNAME}?start=go"),
+                             url=f"https://t.me/{BOT_USERNAME}?start=ref_{ref_code}"),
     ]])
 
 
