@@ -1,0 +1,33 @@
+# Render.com blueprint (free tier). Push this repo to GitHub, then in Render:
+# New + -> Blueprint -> pick the repo. Secrets are set in the dashboard, NOT here.
+services:
+  - type: web
+    name: vybla
+    runtime: python
+    plan: free
+    region: frankfurt          # closest to RU/EU users; change if you like
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn webhook:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      # Set these as SECRETS in the Render dashboard (Environment tab):
+      - key: BOT_TOKEN
+        sync: false
+      - key: BOT_USERNAME
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: WEBHOOK_URL
+        sync: false
+      - key: HASH_SALT
+        sync: false
+      - key: WEBHOOK_SECRET
+        sync: false
+      - key: ADMIN_ID
+        sync: false
