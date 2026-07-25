@@ -10,7 +10,11 @@ import logging
 from aiogram import Bot
 
 from channel import autopost_vibe, post_top, post_group_spotlight
-from config import AUTOPOST_MINUTES, TOP_MINUTES, SPOTLIGHT_MINUTES
+from editorial import post_editorial, post_poll
+from config import (
+    AUTOPOST_MINUTES, TOP_MINUTES, SPOTLIGHT_MINUTES,
+    EDITORIAL_MINUTES, POLL_MINUTES,
+)
 
 log = logging.getLogger("vybla.scheduler")
 
@@ -30,16 +34,20 @@ async def _every(seconds: int, coro, bot: Bot, initial_delay: int) -> None:
 
 
 def start(bot: Bot) -> None:
-    # Staggered initial delays so all three don't fire in the same instant.
+    # Staggered initial delays so none of these fire in the same instant.
     _tasks.append(asyncio.create_task(
         _every(AUTOPOST_MINUTES * 60, autopost_vibe, bot, initial_delay=60)))
     _tasks.append(asyncio.create_task(
         _every(TOP_MINUTES * 60, post_top, bot, initial_delay=180)))
     _tasks.append(asyncio.create_task(
         _every(SPOTLIGHT_MINUTES * 60, post_group_spotlight, bot, initial_delay=300)))
+    _tasks.append(asyncio.create_task(
+        _every(EDITORIAL_MINUTES * 60, post_editorial, bot, initial_delay=420)))
+    _tasks.append(asyncio.create_task(
+        _every(POLL_MINUTES * 60, post_poll, bot, initial_delay=540)))
     log.info(
-        "scheduler started: autopost=%dm top=%dm spotlight=%dm",
-        AUTOPOST_MINUTES, TOP_MINUTES, SPOTLIGHT_MINUTES,
+        "scheduler started: autopost=%dm top=%dm spotlight=%dm editorial=%dm poll=%dm",
+        AUTOPOST_MINUTES, TOP_MINUTES, SPOTLIGHT_MINUTES, EDITORIAL_MINUTES, POLL_MINUTES,
     )
 
 

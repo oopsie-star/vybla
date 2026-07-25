@@ -89,6 +89,21 @@ Public posts never include the recipient's avatar — only the private DM card
 sent to the vibe's owner does. Showing it publicly would deanonymize who a
 vibe was sent to.
 
+## Content for people who don't use the bot yet
+Recycled vibes and stats only interest people already using the app. To give
+the channel/group something worth following on its own, `editorial.py` adds
+two content types sourced independently of the vibes table:
+- every `EDITORIAL_MINUTES` (default 90): the channel gets a short, real
+  psychology/relationship tip — red flags, green flags, honesty-in-anonymity
+  research — on-topic for the audience this kind of app naturally attracts;
+- every `POLL_MINUTES` (default 180): the group gets a native Telegram poll
+  (`send_poll`) people can actually vote in, not just scroll past.
+
+Both pick randomly from a curated bank with a no-immediate-repeat guard.
+None of it is a fabricated "anonymous message" — that would be the same kind
+of dishonesty ruled out for hints/metrics elsewhere in this project. Extend
+the `FACTS` / `POLLS` lists in `editorial.py` to keep the content fresh.
+
 **Free-tier note:** the scheduler runs in-process, so keep the cron-job.org pinger
 hitting `/` every 10 min — it both prevents Render's idle spin-down and keeps the
 loops alive. `GROUP_STRICT=0` relaxes the group to allow normal chat.
