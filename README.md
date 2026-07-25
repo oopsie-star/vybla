@@ -74,10 +74,20 @@ automatic.
    to moderate; being admin also grants this).
 
 **Then, autonomously:**
-- every `AUTOPOST_MINUTES` (default 30): posts a random anonymized vibe to the channel;
+- every `AUTOPOST_MINUTES` (default 30): posts a **real vibe card image** (not
+  plain text) to the channel, with one of several rotating caption hooks so
+  consecutive posts don't look identical;
 - every `TOP_MINUTES` (default 60): posts a Top-3 leaderboard to the group;
+- every `SPOTLIGHT_MINUTES` (default 120): posts a *different* vibe card to
+  the group, framed for reactions/discussion rather than browsing — the
+  group and channel deliberately never show the same content at the same
+  cadence;
 - moderates the group: deletes foreign links/@handles always, and (if `GROUP_STRICT=1`)
   any non-VYBLA-link message, with a self-deleting warning.
+
+Public posts never include the recipient's avatar — only the private DM card
+sent to the vibe's owner does. Showing it publicly would deanonymize who a
+vibe was sent to.
 
 **Free-tier note:** the scheduler runs in-process, so keep the cron-job.org pinger
 hitting `/` every 10 min — it both prevents Render's idle spin-down and keeps the

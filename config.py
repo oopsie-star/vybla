@@ -49,8 +49,9 @@ REFERRAL_GOAL = 3  # invite this many -> free VYBLA+. Must match supabase.sql re
 # --- Autonomous layer ------------------------------------------------------
 # The bot auto-captures the channel/group ids when it is promoted to admin
 # (see the my_chat_member handler), so no manual id config is needed.
-AUTOPOST_MINUTES = int(os.getenv("AUTOPOST_MINUTES", "30"))  # channel post cadence
-TOP_MINUTES = int(os.getenv("TOP_MINUTES", "60"))            # leaderboard cadence
+AUTOPOST_MINUTES = int(os.getenv("AUTOPOST_MINUTES", "30"))  # channel card-post cadence
+TOP_MINUTES = int(os.getenv("TOP_MINUTES", "60"))            # group leaderboard cadence
+SPOTLIGHT_MINUTES = int(os.getenv("SPOTLIGHT_MINUTES", "120"))  # group discussion-card cadence
 # When True, non-link messages in the funnel group are removed. Set GROUP_STRICT=0
 # to only remove foreign links/@handles and allow normal chat.
 GROUP_STRICT = os.getenv("GROUP_STRICT", "1") == "1"
