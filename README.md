@@ -222,16 +222,34 @@ real `<item>` entries, not guessed:
   page). It's a general feed, filtered client-side by category relevance.
 - US, youth/relationships: `refinery29.com` and `cosmopolitan.com` both have
   real dedicated `/relationships/` RSS feeds — verified genuinely on-topic
-  ("invisible string theory", "chronically single for a decade"). Note:
-  `bustle.com/rss/relationships` LOOKS like a match by URL but is actually
-  celebrity/wedding news underneath — checked and excluded.
+  ("invisible string theory", "chronically single for a decade"). `bustle.com
+  /rss/relationships` LOOKS like a match by URL but is actually celebrity/
+  wedding news underneath — checked and excluded. `yourtango.com` (a
+  relationships-focused publication) has no working category feed but its
+  general feed carries clean `<category>` tags — filtered client-side to
+  keep "love"/"dating"/"self" and explicitly drop "zodiac"/"astrology"
+  horoscope filler (verified: 0 zodiac items leaked through in testing).
+  `greatist.com/feed` was tested and rejected despite a healthy-looking
+  200-with-50-items response — the actual titles were sponsor/test
+  placeholders ("noom weight epm", "Test sponsor"), not real articles. A
+  200 status and item count alone don't prove a feed is real; always read
+  the titles.
 - English titles are translated to Russian live via OpenRouter
   (`OPENROUTER_MODEL_TRANSLATE`, defaults to the same deepseek model already
   verified for coherent Russian); translation failure falls back to posting
   the original English title rather than blocking the post — still honest
-  content, just less polished. Posted links are deduplicated via a Redis set
-  for 30 days so the same story doesn't repeat. Cadence: `NEWS_MINUTES`
-  (default 150).
+  content, just less polished.
+
+**Cadence vs. real content availability:** `NEWS_MINUTES` (default 15) is
+how often the bot *checks* the feeds, not a guarantee of a new post every 15
+minutes — these publishers combined only put out a handful of genuinely
+on-topic pieces per day, so most checks will find nothing new and post
+nothing (silent, not an error). The ~50-70 item pool recirculates via a
+3-day Redis dedup window (down from an initial 30 days, which would have
+exhausted the pool in under a day at this check cadence and then gone
+silent for weeks) — old items can resurface after 3 days instead of being
+permanently locked out. If you want denser real coverage, the lever is more
+verified sources, not a shorter interval.
 
 **Quiz** — a real multi-question personality test with a computed result
 (`quiz.py` + FSM handlers in `bot.py`), not a single Telegram poll. Tied

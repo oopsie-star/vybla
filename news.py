@@ -39,12 +39,29 @@ FEEDS = [
     # filtering needed, but titles need translation before posting.
     {"url": "https://www.refinery29.com/en-us/relationships/rss.xml", "lang": "en", "filter": False},
     {"url": "https://www.cosmopolitan.com/rss/relationships.xml/", "lang": "en", "filter": False},
+    # English, general feed (no dedicated category feed exists — verified:
+    # /love/, /relationships/, /self/ all 404) — filtered client-side, same
+    # as knife.media. Its own <category> tags cleanly separate relevant
+    # ("Love", "Dating", "Self") from horoscope filler ("zodiac",
+    # "astrology"), which _is_relevant excludes explicitly.
+    {"url": "https://www.yourtango.com/rss.xml", "lang": "en", "filter": True},
 ]
 
-_RELEVANT_KEYWORDS = (
+# greatist.com/feed was tested and rejected: it returned real HTTP 200 with
+# 50 <item> entries, but they were all sponsor/test placeholders ("noom
+# weight epm", "Test sponsor") rather than real articles — a genuinely
+# broken feed despite a healthy-looking response. A 200 status and item
+# count are not enough to trust a source; the actual titles were checked.
+
+_RELEVANT_KEYWORDS_RU = (
     "психол", "отношен", "любов", "чувств", "секс", "семь", "дружб",
     "свидан", "эмоц", "привязанност", "одиночеств",
 )
+_RELEVANT_KEYWORDS_EN = (
+    "relationship", "dating", "love", "breakup", "marriage", "partner",
+    "emotional", "self", "single", "friendship", "attachment", "crush",
+)
+_EXCLUDE_KEYWORDS_EN = ("zodiac", "astrology", "horoscope")
 
 _POST_TEMPLATES = [
     "📰 {title}\n\nподробнее → {link}\n\nа как у тебя? делись анонимно → @{bot}",
@@ -53,7 +70,12 @@ _POST_TEMPLATES = [
 ]
 
 _SEEN_KEY = "news_posted_links"
-_SEEN_TTL = 30 * 24 * 3600  # forget a link after a month, in case it recirculates
+# The combined pool across all feeds is only ~40-70 items at a time (real
+# publishers don't produce more than a handful of on-topic pieces per day
+# combined) — a 30-day "never repeat" window would exhaust it in well under
+# a day at a 15-min check cadence and then go silent. 3 days lets the pool
+# recirculate instead, so checks keep finding something to post.
+_SEEN_TTL = 3 * 24 * 3600
 
 
 async def _fetch_items(feed: dict) -> list[dict]:
@@ -82,7 +104,11 @@ def _is_relevant(item: dict) -> bool:
     if not item["needs_filter"]:
         return True  # already a dedicated relationships-category feed
     haystack = " ".join(item["categories"]) + " " + item["title"].lower()
-    return any(k in haystack for k in _RELEVANT_KEYWORDS)
+    if item["lang"] == "en":
+        if any(k in haystack for k in _EXCLUDE_KEYWORDS_EN):
+            return False
+        return any(k in haystack for k in _RELEVANT_KEYWORDS_EN)
+    return any(k in haystack for k in _RELEVANT_KEYWORDS_RU)
 
 
 async def _translate_title(title: str) -> str:

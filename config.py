@@ -54,7 +54,7 @@ TOP_MINUTES = int(os.getenv("TOP_MINUTES", "60"))            # group leaderboard
 SPOTLIGHT_MINUTES = int(os.getenv("SPOTLIGHT_MINUTES", "120"))  # group discussion-card cadence
 EDITORIAL_MINUTES = int(os.getenv("EDITORIAL_MINUTES", "90"))   # channel fact/tip cadence
 POLL_MINUTES = int(os.getenv("POLL_MINUTES", "180"))             # group native-poll cadence
-NEWS_MINUTES = int(os.getenv("NEWS_MINUTES", "150"))             # channel real-news cadence
+NEWS_MINUTES = int(os.getenv("NEWS_MINUTES", "15"))              # channel real-news check cadence
 QUIZ_PROMO_MINUTES = int(os.getenv("QUIZ_PROMO_MINUTES", "240")) # group quiz-promo cadence
 
 # AI "banter" between two on-brand characters (Ева/Макс), posted to the group
