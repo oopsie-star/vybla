@@ -64,7 +64,10 @@ DIALOGUE_ACTIVITY_WINDOW_HOURS = int(os.getenv("DIALOGUE_ACTIVITY_WINDOW_HOURS",
 # OpenRouter (OpenAI-compatible). Leave OPENROUTER_API_KEY empty to use the
 # free scripted fallback bank only — nothing breaks without a key.
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.1-8b-instruct")
+# deepseek/deepseek-chat tested noticeably better for natural Russian than
+# llama-3.1-8b-instruct (which mixed in English) and qwen-2.5-7b-instruct
+# (which broke into Chinese mid-reply), at ~$0.0001/call — negligible cost.
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "deepseek/deepseek-chat")
 # When True, non-link messages in the funnel group are removed. Set GROUP_STRICT=0
 # to only remove foreign links/@handles and allow normal chat.
 GROUP_STRICT = os.getenv("GROUP_STRICT", "1") == "1"
