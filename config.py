@@ -54,6 +54,17 @@ TOP_MINUTES = int(os.getenv("TOP_MINUTES", "60"))            # group leaderboard
 SPOTLIGHT_MINUTES = int(os.getenv("SPOTLIGHT_MINUTES", "120"))  # group discussion-card cadence
 EDITORIAL_MINUTES = int(os.getenv("EDITORIAL_MINUTES", "90"))   # channel fact/tip cadence
 POLL_MINUTES = int(os.getenv("POLL_MINUTES", "180"))             # group native-poll cadence
+
+# AI "banter" between two on-brand characters (Ева/Макс), posted to the group
+# as a single formatted dialogue by the bot — not simulated separate accounts.
+# Auto-throttles down once the group has real activity of its own.
+DIALOGUE_MINUTES = int(os.getenv("DIALOGUE_MINUTES", "45"))
+DIALOGUE_ACTIVITY_THRESHOLD = int(os.getenv("DIALOGUE_ACTIVITY_THRESHOLD", "8"))
+DIALOGUE_ACTIVITY_WINDOW_HOURS = int(os.getenv("DIALOGUE_ACTIVITY_WINDOW_HOURS", "3"))
+# OpenRouter (OpenAI-compatible). Leave OPENROUTER_API_KEY empty to use the
+# free scripted fallback bank only — nothing breaks without a key.
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.1-8b-instruct")
 # When True, non-link messages in the funnel group are removed. Set GROUP_STRICT=0
 # to only remove foreign links/@handles and allow normal chat.
 GROUP_STRICT = os.getenv("GROUP_STRICT", "1") == "1"

@@ -21,6 +21,7 @@ import avatars
 import binding
 from cache import (
     redis, sender_hash, allow_guest, guest_locked, is_blocked, block_sender,
+    bump_real_activity,
 )
 from filters import moderate
 from payments import send_premium_invoice, PREMIUM_PAYLOAD
@@ -413,6 +414,7 @@ async def moderate_group(message: Message):
     botu = BOT_USERNAME.lower()
     has_vybla_link = ("start=" in low and botu in low) or (f"t.me/{botu}?start=" in low)
     if has_vybla_link:
+        await bump_real_activity(gid)
         return  # this is exactly what the group is for — allow it
 
     foreign_link = ("t.me/" in low) or ("http" in low) or ("@" in low)
@@ -421,8 +423,14 @@ async def moderate_group(message: Message):
             message,
             f"⛔️ Без своей VYBLA-ссылки тут нельзя. Создай в @{BOT_USERNAME} и кидай сюда.",
         )
-    elif GROUP_STRICT and len(txt) > 5:
+        return
+    if GROUP_STRICT and len(txt) > 5:
         await _delete_and_warn(
             message,
             f"Кидай ссылку из @{BOT_USERNAME}, чтобы писать тут 🤝",
         )
+        return
+
+    # Message survived moderation -> counts as real group activity, which
+    # auto-throttles the AI banter (see dialogue.py) down over time.
+    await bump_real_activity(gid)
