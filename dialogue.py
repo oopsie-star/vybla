@@ -15,6 +15,8 @@ Auto-throttle: once the group has real (non-bot) activity of its own (see
 cache.bump_real_activity, wired from bot.py's moderate_group), posting here
 backs off — see post_dialogue().
 """
+import asyncio
+import html as html_lib
 import logging
 import random
 import re
@@ -44,19 +46,24 @@ _MAX_TOKENS = 300
 _FOREIGN_SCRIPT_RE = re.compile(r"[一-鿿぀-ヿ가-힯]")
 
 # ~10 characters, each voiced by one of two models — genuinely two different
-# models in conversation, not one model role-playing both sides.
+# models in conversation, not one model role-playing both sides. "nickname"/
+# "avatar"/"gender" are display flavor rendered INSIDE the message text (see
+# post_dialogue) — every message is still shown by Telegram as sent by the
+# single VYBLA bot account (name, real avatar, "bot" tag); that's a platform
+# fact no per-line formatting can or should override.
 PERSONAS = [
-    {"name": "Ева",    "model": OPENROUTER_MODEL_FEMALE, "group": "f", "style": "наблюдательная, с лёгким сарказмом, топит за честность"},
-    {"name": "Соня",   "model": OPENROUTER_MODEL_FEMALE, "group": "f", "style": "добрая, мягкая, всех поддерживает"},
-    {"name": "Алина",  "model": OPENROUTER_MODEL_FEMALE, "group": "f", "style": "циничная, за словом в карман не лезет"},
-    {"name": "Марго",  "model": OPENROUTER_MODEL_FEMALE, "group": "f", "style": "романтичная, верит в грин флаги и хороших людей"},
-    {"name": "Ирина",  "model": OPENROUTER_MODEL_FEMALE, "group": "f", "style": "прямолинейная, режет правду-матку без прикрас"},
-    {"name": "Макс",   "model": OPENROUTER_MODEL_MALE, "group": "m", "style": "эмоциональный, делится личным, немного наивный"},
-    {"name": "Дан",    "model": OPENROUTER_MODEL_MALE, "group": "m", "style": "ироничный, любит подколоть, но не зло"},
-    {"name": "Артём",  "model": OPENROUTER_MODEL_MALE, "group": "m", "style": "рассудительный, психолог-самоучка, всё раскладывает по полочкам"},
-    {"name": "Женя",   "model": OPENROUTER_MODEL_MALE, "group": "m", "style": "застенчивый, часто сомневается вслух"},
-    {"name": "Костя",  "model": OPENROUTER_MODEL_MALE, "group": "m", "style": "самоуверенный, любит поспорить"},
+    {"name": "Ева",    "nickname": "eva_watches",   "avatar": "🌙", "gender": "👩", "model": OPENROUTER_MODEL_FEMALE, "group": "f", "style": "наблюдательная, с лёгким сарказмом, топит за честность"},
+    {"name": "Соня",   "nickname": "sonya_soft",    "avatar": "🌸", "gender": "👩", "model": OPENROUTER_MODEL_FEMALE, "group": "f", "style": "добрая, мягкая, всех поддерживает"},
+    {"name": "Алина",  "nickname": "alina_edge",    "avatar": "⚡", "gender": "👩", "model": OPENROUTER_MODEL_FEMALE, "group": "f", "style": "циничная, за словом в карман не лезет"},
+    {"name": "Марго",  "nickname": "margo_romance", "avatar": "🌹", "gender": "👩", "model": OPENROUTER_MODEL_FEMALE, "group": "f", "style": "романтичная, верит в грин флаги и хороших людей"},
+    {"name": "Ирина",  "nickname": "irina_pravda",  "avatar": "🎯", "gender": "👩", "model": OPENROUTER_MODEL_FEMALE, "group": "f", "style": "прямолинейная, режет правду-матку без прикрас"},
+    {"name": "Макс",   "nickname": "max_naive",     "avatar": "🐿", "gender": "👨", "model": OPENROUTER_MODEL_MALE, "group": "m", "style": "эмоциональный, делится личным, немного наивный"},
+    {"name": "Дан",    "nickname": "dan_irony",     "avatar": "😏", "gender": "👨", "model": OPENROUTER_MODEL_MALE, "group": "m", "style": "ироничный, любит подколоть, но не зло"},
+    {"name": "Артём",  "nickname": "artem_psy",     "avatar": "🧠", "gender": "👨", "model": OPENROUTER_MODEL_MALE, "group": "m", "style": "рассудительный, психолог-самоучка, всё раскладывает по полочкам"},
+    {"name": "Женя",   "nickname": "zhenya_shy",    "avatar": "🙈", "gender": "👨", "model": OPENROUTER_MODEL_MALE, "group": "m", "style": "застенчивый, часто сомневается вслух"},
+    {"name": "Костя",  "nickname": "kostya_spor",   "avatar": "🔥", "gender": "👨", "model": OPENROUTER_MODEL_MALE, "group": "m", "style": "самоуверенный, любит поспорить"},
 ]
+_PERSONA_BY_NAME = {p["name"]: p for p in PERSONAS}
 
 TOPICS = [
     "ред флаги в отношениях",
@@ -193,13 +200,21 @@ def _fallback_dialogue() -> list[tuple[str, str]]:
     return random.choice(_FALLBACK_DIALOGUES)
 
 
-async def generate_dialogue() -> list[tuple[str, str]]:
+async def generate_dialogue() -> tuple[str, list[tuple[str, str]]]:
     topic = random.choice(TOPICS)
     lines = await _generate_via_openrouter(topic)
-    return lines if lines else _fallback_dialogue()
+    return topic, (lines if lines else _fallback_dialogue())
+
+
+def _typing_delay(text: str) -> float:
+    return min(3.2, max(1.0, 0.9 + len(text) * 0.035))
 
 
 async def post_dialogue(bot: Bot) -> None:
+    """Post the scene as a sequence of separate messages — one per line, each
+    preceded by a real 'печатает…' indicator — instead of one wall of text.
+    That's what actually makes it read as a conversation happening, not a
+    transcript someone pasted in."""
     gid = binding.group_id()
     if not gid:
         return
@@ -209,11 +224,38 @@ async def post_dialogue(bot: Bot) -> None:
         log.info("group has real activity (%d) — skipping AI banter", activity)
         return
 
-    lines = await generate_dialogue()
-    cast_names = ", ".join(dict.fromkeys(name for name, _ in lines))  # unique, ordered
-    body = "\n".join(f"{speaker}: {text}" for speaker, text in lines)
-    message = f"🎭 {cast_names} обсуждают:\n\n{body}\n\nа у тебя как? → @{BOT_USERNAME}"
+    topic, lines = await generate_dialogue()
+    chat_id = int(gid)
+
     try:
-        await bot.send_message(int(gid), message)
+        await bot.send_message(
+            chat_id, f"🎭 <i>тема: {html_lib.escape(topic)}</i>", parse_mode="HTML",
+        )
     except Exception as e:
-        log.warning("dialogue post failed: %s", e)
+        log.warning("dialogue header failed: %s", e)
+        return
+    await asyncio.sleep(0.8)
+
+    for speaker, text in lines:
+        persona = _PERSONA_BY_NAME.get(speaker)
+        avatar = persona["avatar"] if persona else "💬"
+        nickname = persona["nickname"] if persona else speaker.lower()
+        gender = persona["gender"] if persona else ""
+
+        try:
+            await bot.send_chat_action(chat_id, "typing")
+        except Exception:
+            pass
+        await asyncio.sleep(_typing_delay(text))
+
+        bubble = f"{avatar} <b>{nickname}</b> {gender}\n{html_lib.escape(text)}"
+        try:
+            await bot.send_message(chat_id, bubble, parse_mode="HTML")
+        except Exception as e:
+            log.warning("dialogue bubble failed: %s", e)
+            return  # chat unreachable — stop rather than spam retries
+
+    try:
+        await bot.send_message(chat_id, f"а у тебя как? → @{BOT_USERNAME}")
+    except Exception as e:
+        log.warning("dialogue CTA failed: %s", e)

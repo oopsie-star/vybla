@@ -16,9 +16,15 @@ from aiogram.types import FSInputFile
 import db
 import binding
 import cards
+import vibe_examples
 from config import BOT_USERNAME
 
 log = logging.getLogger("vybla.channel")
+
+# Below this many real vibes in the DB, posts fall back to the curated
+# example bank — always with honest "example" framing, never presented as
+# something a real person actually received.
+REAL_POOL_THRESHOLD = 5
 
 # Several hooks in rotation so consecutive posts don't read as the same
 # template on repeat — that's what made the feed feel robotic.
@@ -37,6 +43,28 @@ _SPOTLIGHT_CAPTIONS = [
     "спалили чей-то вайб (анонимно, не переживайте 🖤).\n\nобсудим?",
     "как думаете, за дело или перебор?\n\n👇",
 ]
+
+# Honest "this is a demo" framing — never claims to be a real submission.
+_EXAMPLE_CAPTIONS = [
+    "💡 Пример: вот как может выглядеть твой вайб в VYBLA\n\nсвоя ссылка → @{bot}",
+    "✨ Так выглядят карточки VYBLA (пример)\n\nсоздай свою → @{bot}",
+    "🎨 Демо-вайб — а твой будет от настоящего человека\n\n→ @{bot}",
+]
+_EXAMPLE_SPOTLIGHT_CAPTIONS = [
+    "💡 Пример того, что можно получить анонимно.\n\nкак тебе такой формат? 👇",
+    "✨ Демо-карточка VYBLA — скоро тут будут настоящие вайбы.\n\n👇",
+]
+
+
+async def _pick_vibe(pool: list[dict]) -> tuple[str, str, bool]:
+    """Return (text, mode, is_real). Falls back to the curated example bank
+    when the real pool is too small — cold-start content, never disguised
+    as a real submission (see the *_EXAMPLE_CAPTIONS used with it)."""
+    if len(pool) >= REAL_POOL_THRESHOLD:
+        vibe = random.choice(pool)
+        return vibe["text"], vibe.get("mode", "custom"), True
+    text, mode = random.choice(vibe_examples.all_examples())
+    return text, mode, False
 
 
 async def _post_card(bot: Bot, chat_id: int, text: str, mode: str, caption: str) -> None:
@@ -59,12 +87,13 @@ async def autopost_vibe(bot: Bot) -> None:
     if not cid:
         return  # not bound to a channel yet
     pool = await db.recent_feed(limit=100)
-    if not pool:
-        return
-    vibe = random.choice(pool)
-    total = await db.count_all_vibes()
-    caption = random.choice(_CHANNEL_CAPTIONS).format(bot=BOT_USERNAME, total=total)
-    await _post_card(bot, int(cid), vibe["text"], vibe.get("mode", "custom"), caption)
+    text, mode, is_real = await _pick_vibe(pool)
+    if is_real:
+        total = await db.count_all_vibes()
+        caption = random.choice(_CHANNEL_CAPTIONS).format(bot=BOT_USERNAME, total=total)
+    else:
+        caption = random.choice(_EXAMPLE_CAPTIONS).format(bot=BOT_USERNAME)
+    await _post_card(bot, int(cid), text, mode, caption)
 
 
 async def post_group_spotlight(bot: Bot) -> None:
@@ -72,11 +101,9 @@ async def post_group_spotlight(bot: Bot) -> None:
     if not gid:
         return  # not bound to a group yet
     pool = await db.recent_feed(limit=100)
-    if not pool:
-        return
-    vibe = random.choice(pool)
-    caption = random.choice(_SPOTLIGHT_CAPTIONS)
-    await _post_card(bot, int(gid), vibe["text"], vibe.get("mode", "custom"), caption)
+    text, mode, is_real = await _pick_vibe(pool)
+    caption = random.choice(_SPOTLIGHT_CAPTIONS if is_real else _EXAMPLE_SPOTLIGHT_CAPTIONS)
+    await _post_card(bot, int(gid), text, mode, caption)
 
 
 async def post_top(bot: Bot) -> None:

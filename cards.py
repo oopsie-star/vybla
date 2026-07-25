@@ -38,6 +38,24 @@ MODE_GRADIENT = {
     "custom": "black_gray",
     "voice": "indigo",
 }
+MODE_BADGE = {
+    "compliment": "КОМПЛИМЕНТ",
+    "redflag": "РЕД ФЛАГ",
+    "crush": "КРАШ",
+    "custom": "ВАЙБ",
+    "voice": "ВАЙБ",
+}
+# Regular text fonts have no color-emoji glyphs, and a headless Linux
+# container (Render) usually has no emoji font installed either — an emoji
+# character drawn via ImageDraw.text renders as a blank "tofu" box. Use a
+# plain drawn accent dot instead; it needs no font support at all.
+MODE_ACCENT = {
+    "compliment": (236, 72, 153),
+    "redflag": (220, 38, 38),
+    "crush": (34, 211, 238),
+    "custom": (156, 163, 175),
+    "voice": (129, 140, 248),
+}
 
 
 def _font(size: int) -> ImageFont.FreeTypeFont:
@@ -86,6 +104,42 @@ def _circle_avatar(img: Image.Image, size: int) -> Image.Image:
     return img
 
 
+def _draw_badge(draw: ImageDraw.ImageDraw, mode: str, cy: int):
+    """Small rounded pill near the top: colored accent dot + mode label —
+    gives the card an identity at a glance instead of floating bare text."""
+    label = MODE_BADGE.get(mode, MODE_BADGE["custom"])
+    accent = MODE_ACCENT.get(mode, MODE_ACCENT["custom"])
+    font = _font(38)
+    bbox = draw.textbbox((0, 0), label, font=font)
+    text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    dot_d = 22
+    gap = 18
+    pad_x, pad_y = 40, 22
+    content_w = dot_d + gap + text_w
+    box_w, box_h = content_w + pad_x * 2, max(text_h, dot_d) + pad_y * 2
+    x0 = (W - box_w) // 2
+    y0 = cy - box_h // 2
+    draw.rounded_rectangle(
+        (x0, y0, x0 + box_w, y0 + box_h), radius=box_h // 2,
+        fill=(255, 255, 255, 235),
+    )
+    dot_y = y0 + box_h // 2
+    draw.ellipse(
+        (x0 + pad_x, dot_y - dot_d // 2, x0 + pad_x + dot_d, dot_y + dot_d // 2),
+        fill=accent,
+    )
+    draw.text((x0 + pad_x + dot_d + gap, y0 + pad_y - bbox[1]), label, font=font, fill=(20, 20, 24))
+
+
+def _draw_quote_mark(card: Image.Image, x: int, y: int, size: int = 260):
+    """Big decorative opening quote, low-opacity, sitting behind the text
+    block — the classic 'quote card' visual anchor instead of bare text."""
+    font = _font(size)
+    layer = Image.new("RGBA", (size, size + 40), (0, 0, 0, 0))
+    ImageDraw.Draw(layer).text((0, -size * 0.28), "“", font=font, fill=(255, 255, 255, 70))
+    card.paste(layer, (x, y), layer)
+
+
 def generate_vibe_card(text: str, mode: str, avatar_path: str | None = None,
                        watermark: bool = True) -> str:
     """Render a card and return its filesystem path (PNG)."""
@@ -98,19 +152,23 @@ def generate_vibe_card(text: str, mode: str, avatar_path: str | None = None,
     card = Image.alpha_composite(card, overlay)
     draw = ImageDraw.Draw(card)
 
-    top_of_text = 360
-    # avatar circle near the top
+    _draw_badge(draw, mode, cy=130)
+    top_of_text = 260
+
+    # avatar circle near the top (private DM cards only — public posts never
+    # pass avatar_path, so as not to deanonymize the recipient)
     if avatar_path and os.path.exists(avatar_path):
         try:
             av = _circle_avatar(Image.open(avatar_path), 200)
             ring = Image.new("RGBA", (216, 216), (0, 0, 0, 0))
             ImageDraw.Draw(ring).ellipse((0, 0, 216, 216), fill=(255, 255, 255, 255))
             ring.paste(av, (8, 8), av)
-            card.paste(ring, ((W - 216) // 2, 150), ring)
-            top_of_text = 460
+            card.paste(ring, ((W - 216) // 2, 220), ring)
+            top_of_text = 480
         except Exception:
             pass
 
+    _draw_quote_mark(card, x=90, y=top_of_text - 40)
     _draw_text_block(draw, text, _font(70), cy=(top_of_text + H - 260) // 2)
 
     if watermark:

@@ -157,6 +157,36 @@ group becomes genuinely active, the AI banter backs off on its own.
 
 Extend the cast or topics by editing `PERSONAS` / `TOPICS` in `dialogue.py`.
 
+**Presentation — separate typed-out bubbles, not one text block:** each line
+posts as its own message, preceded by a real `sendChatAction("typing")`
+indicator and a length-proportional delay, so it visually reads as a
+conversation happening rather than a pasted transcript. Every persona has a
+display avatar emoji + nickname + gender emoji rendered inside the message
+text (e.g. "🌙 eva_watches 👩"). **Hard platform limit, not a choice:**
+Telegram always shows the actual sender name/avatar/"bot" tag for every
+message from the single VYBLA bot account — no per-line formatting can make
+Telegram display a different sender identity per character. A ~4-7 line
+scene takes roughly 20-80s of wall-clock posting time (background task, not
+blocking anything); a live foreign-script leak (see `_FOREIGN_SCRIPT_RE`
+above) was caught and correctly dropped during testing of this version too.
+
+## Vibe cards: real variety + a "quote card" design
+Two things fixed after real-world feedback that the cards looked bare and
+kept repeating the same one test phrase:
+- **Design** (`cards.py`): every card now gets a mode badge pill (colored
+  accent dot + label — deliberately not an emoji glyph, since plain text
+  fonts have no color-emoji glyphs and a headless Linux container usually
+  has no emoji font either, which rendered as a blank box when tried) and a
+  large decorative quote mark behind the text — the classic "quote card"
+  look instead of bare centered text on a gradient.
+- **Content variety** (`vibe_examples.py`): ~67 curated example vibe texts
+  across all 4 modes, used ONLY when the real `vibes` table has fewer than
+  `REAL_POOL_THRESHOLD` (5) entries — i.e. cold start, before real users
+  exist. Captions explicitly say "пример"/demo when an example is used
+  (`_EXAMPLE_CAPTIONS` in `channel.py`), never claimed as a real submission —
+  the same honesty rule as everywhere else in this project. Once real vibes
+  accumulate past the threshold, the example bank stops being used entirely.
+
 ## Why no `userbot.py` / `gen_session.py`
 These were requested but intentionally omitted: they automate a **user account**,
 which gets that account banned. All the autonomy they were meant to provide
