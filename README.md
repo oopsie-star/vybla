@@ -140,6 +140,27 @@ post instead of 1 — still trivial (~$0.15-0.20/month at the default 45-min
 cadence) but worth knowing since it's a real multiplier over a single-call
 design.
 
+**Content quality — fixed after real feedback that lines were generic
+("banal", no specificity):** the fix was prompting, not the model. Each
+persona now has a concrete `quirk` (a specific habit/tic, not just an
+adjective — e.g. Artём "explains everything through attachment theory and
+childhood, even unprompted") and the system prompt (`_ANTI_CLICHE`)
+explicitly bans stock phrases ("доверие — это важно", "главное коммуникация")
+with worked bad/good examples. Verified live before/after: generic "доверие
+строится на мелочах" → specific "он на первом свидании сказал что все
+бывшие психи — красный флаг размером с область"-style lines that actually
+use each persona's quirk.
+
+This surfaced a real bug while testing it: `xiaomi/mimo-v2.5` is a reasoning
+model whose internal "thinking" burns completion-token budget before writing
+the reply, and the longer anti-cliché prompt pushed it over — confirmed live
+(`reasoning_tokens: 364` against a 300-token cap, `finish_reason: "length"`,
+`content: None`). It was failing *silently* too: empty content wasn't logged
+as a distinct case before, only foreign-script drops and hard errors were —
+fixed both: `_MAX_TOKENS` raised to 1500 (confirmed live: 0 empty turns
+across 3 test dialogues, vs. 3 empty turns at 900), and empty content now
+logs a warning instead of failing silently.
+
 **Resilience — verified, not assumed:** falls back to a curated scripted
 bank (`_FALLBACK_DIALOGUES`) when `OPENROUTER_API_KEY` is unset, and any
 individual turn that fails (bad key, timeout, empty output) is skipped rather

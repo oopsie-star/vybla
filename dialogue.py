@@ -34,10 +34,13 @@ from config import (
 log = logging.getLogger("vybla.dialogue")
 
 # Reasoning-capable models (e.g. mimo-v2.5) spend part of the completion
-# budget on an internal "reasoning" field before writing the final reply —
-# too small a max_tokens returns empty content. 300 leaves enough headroom
-# for both on every model tested, at negligible extra cost either way.
-_MAX_TOKENS = 300
+# budget on an internal "reasoning" field before writing the final reply.
+# Confirmed live: with the anti-cliché system prompt (longer + more complex
+# instructions), mimo-v2.5's reasoning usage varies call to call (364, then
+# 501 tokens seen in testing) — 900 still left ~20% of mimo turns empty.
+# 1500 gives real headroom; cost is still a fraction of a cent per call
+# either way, so there's no reason to cut it close.
+_MAX_TOKENS = 1500
 
 # Some models occasionally leak CJK characters into Russian output (seen
 # live in testing, e.g. mimo-v2.5 once produced "автор最好的"). Treat a line
@@ -52,16 +55,36 @@ _FOREIGN_SCRIPT_RE = re.compile(r"[一-鿿぀-ヿ가-힯]")
 # single VYBLA bot account (name, real avatar, "bot" tag); that's a platform
 # fact no per-line formatting can or should override.
 PERSONAS = [
-    {"name": "Ева",    "nickname": "eva_watches",   "avatar": "🌙", "gender": "👩", "model": OPENROUTER_MODEL_FEMALE, "group": "f", "style": "наблюдательная, с лёгким сарказмом, топит за честность"},
-    {"name": "Соня",   "nickname": "sonya_soft",    "avatar": "🌸", "gender": "👩", "model": OPENROUTER_MODEL_FEMALE, "group": "f", "style": "добрая, мягкая, всех поддерживает"},
-    {"name": "Алина",  "nickname": "alina_edge",    "avatar": "⚡", "gender": "👩", "model": OPENROUTER_MODEL_FEMALE, "group": "f", "style": "циничная, за словом в карман не лезет"},
-    {"name": "Марго",  "nickname": "margo_romance", "avatar": "🌹", "gender": "👩", "model": OPENROUTER_MODEL_FEMALE, "group": "f", "style": "романтичная, верит в грин флаги и хороших людей"},
-    {"name": "Ирина",  "nickname": "irina_pravda",  "avatar": "🎯", "gender": "👩", "model": OPENROUTER_MODEL_FEMALE, "group": "f", "style": "прямолинейная, режет правду-матку без прикрас"},
-    {"name": "Макс",   "nickname": "max_naive",     "avatar": "🐿", "gender": "👨", "model": OPENROUTER_MODEL_MALE, "group": "m", "style": "эмоциональный, делится личным, немного наивный"},
-    {"name": "Дан",    "nickname": "dan_irony",     "avatar": "😏", "gender": "👨", "model": OPENROUTER_MODEL_MALE, "group": "m", "style": "ироничный, любит подколоть, но не зло"},
-    {"name": "Артём",  "nickname": "artem_psy",     "avatar": "🧠", "gender": "👨", "model": OPENROUTER_MODEL_MALE, "group": "m", "style": "рассудительный, психолог-самоучка, всё раскладывает по полочкам"},
-    {"name": "Женя",   "nickname": "zhenya_shy",    "avatar": "🙈", "gender": "👨", "model": OPENROUTER_MODEL_MALE, "group": "m", "style": "застенчивый, часто сомневается вслух"},
-    {"name": "Костя",  "nickname": "kostya_spor",   "avatar": "🔥", "gender": "👨", "model": OPENROUTER_MODEL_MALE, "group": "m", "style": "самоуверенный, любит поспорить"},
+    {"name": "Ева",    "nickname": "eva_watches",   "avatar": "🌙", "gender": "👩", "model": OPENROUTER_MODEL_FEMALE, "group": "f",
+     "style": "наблюдательная, с лёгким сарказмом, топит за честность",
+     "quirk": "запоминает случайные мелочи о людях и потом неожиданно их вспоминает"},
+    {"name": "Соня",   "nickname": "sonya_soft",    "avatar": "🌸", "gender": "👩", "model": OPENROUTER_MODEL_FEMALE, "group": "f",
+     "style": "добрая, мягкая, всех поддерживает",
+     "quirk": "плачет от рекламы стирального порошка и грустных постов в соцсетях"},
+    {"name": "Алина",  "nickname": "alina_edge",    "avatar": "⚡", "gender": "👩", "model": OPENROUTER_MODEL_FEMALE, "group": "f",
+     "style": "циничная, за словом в карман не лезет",
+     "quirk": "ведёт мысленный список чужих красных флагов и иногда зачитывает вслух"},
+    {"name": "Марго",  "nickname": "margo_romance", "avatar": "🌹", "gender": "👩", "model": OPENROUTER_MODEL_FEMALE, "group": "f",
+     "style": "романтичная, верит в грин флаги и хороших людей",
+     "quirk": "влюбляется в людей по переписке за один вечер, а потом отходит неделю"},
+    {"name": "Ирина",  "nickname": "irina_pravda",  "avatar": "🎯", "gender": "👩", "model": OPENROUTER_MODEL_FEMALE, "group": "f",
+     "style": "прямолинейная, режет правду-матку без прикрас",
+     "quirk": "физически не умеет врать даже во спасение, даже когда стоило бы"},
+    {"name": "Макс",   "nickname": "max_naive",     "avatar": "🐿", "gender": "👨", "model": OPENROUTER_MODEL_MALE, "group": "m",
+     "style": "эмоциональный, делится личным, немного наивный",
+     "quirk": "верит всему, что пишут анонимно, даже очевидным шуткам"},
+    {"name": "Дан",    "nickname": "dan_irony",     "avatar": "😏", "gender": "👨", "model": OPENROUTER_MODEL_MALE, "group": "m",
+     "style": "ироничный, любит подколоть, но не зло",
+     "quirk": "у него есть нелепая теория заговора почти на любую ситуацию"},
+    {"name": "Артём",  "nickname": "artem_psy",     "avatar": "🧠", "gender": "👨", "model": OPENROUTER_MODEL_MALE, "group": "m",
+     "style": "рассудительный, психолог-самоучка, всё раскладывает по полочкам",
+     "quirk": "объясняет всё через привязанность и детство, даже когда его не просили"},
+    {"name": "Женя",   "nickname": "zhenya_shy",    "avatar": "🙈", "gender": "👨", "model": OPENROUTER_MODEL_MALE, "group": "m",
+     "style": "застенчивый, часто сомневается вслух",
+     "quirk": "готовит ответ по 20 минут в черновиках и часто всё равно не отправляет"},
+    {"name": "Костя",  "nickname": "kostya_spor",   "avatar": "🔥", "gender": "👨", "model": OPENROUTER_MODEL_MALE, "group": "m",
+     "style": "самоуверенный, любит поспорить",
+     "quirk": "искренне уверен, что прав, даже когда только что был неправ"},
 ]
 _PERSONA_BY_NAME = {p["name"]: p for p in PERSONAS}
 
@@ -84,6 +107,26 @@ _TURN_RULES = (
     "мата и оскорблений, дружелюбно-подкалывающий тон. Это художественный "
     "диалог для развлечения, не утверждай, что это реальная переписка. "
     "Ответь ТОЛЬКО текстом реплики, без имени и без кавычек."
+)
+
+# Cheap models default to generic, cliché "psychology-column" phrasing
+# without strong steering — this is the fix for that, independent of which
+# model is behind it: force concreteness and give a bar to hit via examples.
+_ANTI_CLICHE = (
+    "ВАЖНО про качество: НЕ пиши общими фразами уровня статьи из паблика — "
+    "запрещены штампы вроде «доверие — это важно», «главное коммуникация», "
+    "«это грин/ред флаг» без конкретики, «нужно слушать друг друга». Вместо "
+    "общей мудрости — конкретная деталь, случай, придирка, дурацкая мысль. "
+    "Используй свою фишку из описания персонажа, если уместно. Пиши как "
+    "живой человек с своим опытом и тараканами, а не как психологический "
+    "паблик.\n\n"
+    "Плохо (баналии, так писать НЕЛЬЗЯ): «доверие строится на мелочах», "
+    "«главное — быть честным с собой», «это классический ред флаг».\n"
+    "Хорошо (конкретно, с деталью, так и нужно): «он на первом свидании "
+    "сказал что все его бывшие психи — красный флаг размером с область», "
+    "«мне три года назад анонимно написали „у тебя тревожный смех“ — до сих "
+    "пор об этом думаю», «а я плачу от рекламы стирального порошка, не "
+    "спрашивай»."
 )
 
 # Used when OPENROUTER_API_KEY is unset, every call fails, or output doesn't
@@ -146,7 +189,11 @@ def _pick_cast() -> list[dict]:
 
 async def _speak(client: httpx.AsyncClient, persona: dict, topic: str, transcript: list[tuple[str, str]]) -> str | None:
     history_text = "\n".join(f"{name}: {line}" for name, line in transcript) or "(разговор ещё не начался)"
-    system = f"Ты {persona['name']} — {persona['style']}. {_TURN_RULES}"
+    system = (
+        f"Ты {persona['name']} — {persona['style']}. "
+        f"Твоя личная фишка: {persona['quirk']}.\n\n"
+        f"{_TURN_RULES}\n\n{_ANTI_CLICHE}"
+    )
     user = f"Тема разговора: {topic}\n\nБеседа пока:\n{history_text}\n\nТвоя следующая реплика:"
     try:
         resp = await client.post(
@@ -171,10 +218,13 @@ async def _speak(client: httpx.AsyncClient, persona: dict, topic: str, transcrip
         log.warning("openrouter turn failed for %s (%s): %s", persona["name"], persona["model"], e)
         return None
     content = (content or "").strip().strip('"').strip()
-    if content and _FOREIGN_SCRIPT_RE.search(content):
+    if not content:
+        log.warning("empty content for %s (%s) — likely ran out of token budget", persona["name"], persona["model"])
+        return None
+    if _FOREIGN_SCRIPT_RE.search(content):
         log.warning("dropping %s's line for foreign-script leak: %r", persona["name"], content)
         return None
-    return content or None
+    return content
 
 
 async def _generate_via_openrouter(topic: str) -> list[tuple[str, str]] | None:
