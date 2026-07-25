@@ -64,10 +64,12 @@ DIALOGUE_ACTIVITY_WINDOW_HOURS = int(os.getenv("DIALOGUE_ACTIVITY_WINDOW_HOURS",
 # OpenRouter (OpenAI-compatible). Leave OPENROUTER_API_KEY empty to use the
 # free scripted fallback bank only — nothing breaks without a key.
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-# deepseek/deepseek-chat tested noticeably better for natural Russian than
-# llama-3.1-8b-instruct (which mixed in English) and qwen-2.5-7b-instruct
-# (which broke into Chinese mid-reply), at ~$0.0001/call — negligible cost.
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "deepseek/deepseek-chat")
+# Two distinct models voice the two character groups, so the "cast" is
+# genuinely not one model talking to itself. Both verified live against
+# OpenRouter's /models list and tested for coherent Russian output before
+# being set as defaults — change freely via env vars, no code edits needed.
+OPENROUTER_MODEL_FEMALE = os.getenv("OPENROUTER_MODEL_FEMALE", "xiaomi/mimo-v2.5")
+OPENROUTER_MODEL_MALE = os.getenv("OPENROUTER_MODEL_MALE", "deepseek/deepseek-v4-flash")
 # When True, non-link messages in the funnel group are removed. Set GROUP_STRICT=0
 # to only remove foreign links/@handles and allow normal chat.
 GROUP_STRICT = os.getenv("GROUP_STRICT", "1") == "1"

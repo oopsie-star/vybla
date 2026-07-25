@@ -110,34 +110,52 @@ loops alive. `GROUP_STRICT=0` relaxes the group to allow normal chat.
 
 ## AI banter in the group (dialogue.py) — and where the line is
 Every `DIALOGUE_MINUTES` (default 45) the group gets a short scripted-style
-dialogue between two named characters, Ева and Макс, on an on-brand topic
-(red flags, honesty, anonymous compliments, …). This exists to make a brand
-new group not feel like a ghost town before real users show up.
+conversation between named characters (10-persona cast, 2-4 per scene) on an
+on-brand topic (red flags, honesty, anonymous compliments, …). This exists to
+make a brand new group not feel like a ghost town before real users show up.
 
 **Why this is different from a fake community:** it's the single VYBLA bot
-account posting one clearly-labeled formatted message ("🎭 Ева и Макс
-обсуждают: …") — not multiple accounts pretending to be separate real users
-having a live conversation. Telegram already tags every bot-posted message,
-and the framing itself reads as authored content (like a mini comic), not as
-real people currently chatting. That distinction is the whole reason this
-version was buildable and the earlier "simulate real users arguing/dating/
-fighting" version wasn't — that one would have deceived new members about
-the group's actual activity, the same category of problem as the fake-hints
-and fake-metrics decisions elsewhere in this project.
+account posting one clearly-labeled formatted message ("🎭 X и Y обсуждают:
+…") — not multiple accounts pretending to be separate real users having a
+live conversation. Telegram already tags every bot-posted message, and the
+framing itself reads as authored content (like a mini comic), not as real
+people currently chatting. That distinction is the whole reason this version
+was buildable and the earlier "simulate real users arguing/dating/fighting"
+version wasn't — that one would have deceived new members about the group's
+actual activity, the same category of problem as the fake-hints and
+fake-metrics decisions elsewhere in this project.
 
-**Generation:** live via OpenRouter (`OPENROUTER_API_KEY` + `OPENROUTER_MODEL`,
-OpenAI-compatible `chat/completions`) when a key is set; falls back to a
-curated scripted bank (`_FALLBACK_DIALOGUES` in `dialogue.py`) on a missing
-key, a failed call, or unparsable output — verified to degrade gracefully
-(tested with no key and with an invalid key; both fall back cleanly, no crash).
-Without a key, the feature runs for free on the fallback bank only.
+**Two real models, not one talking to itself:** the cast is split into two
+groups voiced by two different models (`OPENROUTER_MODEL_FEMALE`, default
+`xiaomi/mimo-v2.5`; `OPENROUTER_MODEL_MALE`, default `deepseek/deepseek-v4-flash`
+— both verified live against OpenRouter's `/models` endpoint, not assumed).
+Every line is a separate API call to that persona's model, seeing the
+transcript so far — genuine turn-by-turn generation, not one prompt writing
+both sides. `_pick_cast()` always includes at least one persona from each
+group, so even a 2-person scene is guaranteed cross-model. Swap models purely
+via env vars, no code changes.
 
-**Auto-throttle:** `bot.py`'s group moderator now counts real (non-bot)
-messages that survive moderation into a rolling Redis window
+**Generation cost note:** turn-by-turn calls mean ~4-7 API calls per dialogue
+post instead of 1 — still trivial (~$0.15-0.20/month at the default 45-min
+cadence) but worth knowing since it's a real multiplier over a single-call
+design.
+
+**Resilience — verified, not assumed:** falls back to a curated scripted
+bank (`_FALLBACK_DIALOGUES`) when `OPENROUTER_API_KEY` is unset, and any
+individual turn that fails (bad key, timeout, empty output) is skipped rather
+than aborting the whole conversation; if fewer than 2 lines survive, the
+whole thing falls back to the bank. Tested directly: no key → fallback;
+invalid key (real live 401s on every turn) → fallback; both produce a valid
+≥2-line result, no crash.
+
+**Auto-throttle:** `bot.py`'s group moderator counts real (non-bot) messages
+that survive moderation into a rolling Redis window
 (`DIALOGUE_ACTIVITY_WINDOW_HOURS`, default 3h). Once that count reaches
 `DIALOGUE_ACTIVITY_THRESHOLD` (default 8), `post_dialogue()` skips posting —
 verified directly: forcing the counter to 10 suppressed the next post. As the
 group becomes genuinely active, the AI banter backs off on its own.
+
+Extend the cast or topics by editing `PERSONAS` / `TOPICS` in `dialogue.py`.
 
 ## Why no `userbot.py` / `gen_session.py`
 These were requested but intentionally omitted: they automate a **user account**,
