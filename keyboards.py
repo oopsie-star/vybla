@@ -3,9 +3,10 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
     CopyTextButton,
+    WebAppInfo,
 )
 
-from config import t, link_for, MODES, BOT_USERNAME, PREMIUM_PRICE_STARS
+from config import t, link_for, MODES, BOT_USERNAME, PREMIUM_PRICE_STARS, WEBHOOK_URL
 
 
 def main_menu(lang: str, code: str, unread: int) -> InlineKeyboardMarkup:
@@ -29,9 +30,12 @@ def guest_modes(lang: str, code: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def vibe_actions(lang: str, vibe_id: str) -> InlineKeyboardMarkup:
+def vibe_actions(lang: str, vibe_id: str, owner_code: str) -> InlineKeyboardMarkup:
+    # web_app opens Telegram's native share-to-story editor pre-filled with the
+    # card + a link back to the bot (see /story and /card routes in webhook.py).
+    story_url = f"{WEBHOOK_URL}/story/{vibe_id}?lang={lang}&code={owner_code}"
     return InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text=t(lang, "btn_reply_story"), callback_data=f"story:{vibe_id}"),
+        InlineKeyboardButton(text=t(lang, "btn_reply_story"), web_app=WebAppInfo(url=story_url)),
         InlineKeyboardButton(text=t(lang, "btn_report"), callback_data=f"report:{vibe_id}"),
     ]])
 

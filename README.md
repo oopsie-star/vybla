@@ -107,6 +107,19 @@ the `register_referral` function from `supabase.sql` (adds `referred_by`,
 `referral_count`, `referral_rewarded` columns — safe to re-run, uses
 `if not exists` / `or replace`).
 
+## One-tap "reply in story"
+The "↩️ Ответить в сторис" button opens a tiny Telegram Mini App
+(`/story/{vibe_id}` in `webhook.py`) that calls the native
+`Telegram.WebApp.shareToStory()` API: it opens Telegram's own story editor
+pre-loaded with the vibe card and a tappable link back to the bot (tagged
+with the owner's referral code) — one tap, no manual save-and-post. The
+image itself is regenerated on demand at `/card/{vibe_id}.png` (not stored).
+Requires a recent **mobile** Telegram client; older/desktop clients get an
+in-page fallback with instructions, so nothing breaks for them. The bot link
+is also baked into the story caption text itself (not just the link sticker),
+so it stays visible even if Telegram restricts `widget_link` for this bot
+category.
+
 ## Growth content
 See [`growth/CONTENT_PLAN.md`](growth/CONTENT_PLAN.md) — 8 ready video scripts
 (TikTok/Reels/Shorts), a 2-week posting calendar, and hashtag sets for

@@ -110,7 +110,13 @@ TEXTS = {
         "btn_reply_story": "↩️ Ответить в сторис",
         "btn_report": "🚫 Жалоба",
         "reported_ok": "Спасибо, вайб скрыт, отправитель заблокирован на 24ч.",
-        "reply_story_hint": "Сохрани карточку выше и выложи в сторис с ответом. Отметь @{bot} — пусть друзья тоже спросят 😏",
+        "story_caption": "Мне анонимно написали в VYBLA 🖤",
+        "story_widget_name": "VYBLA",
+        "story_fallback": (
+            "Не получилось открыть редактор историй автоматически "
+            "(нужен свежий мобильный Telegram). Сохрани картинку выше и "
+            "выложи в историю вручную, отметив: {link}"
+        ),
 
         "vibes_empty": "Пока пусто. Кинь ссылку в био и жди 👀",
         "vibes_header": "Твои вайбы (стр. {page}):",
@@ -188,7 +194,13 @@ TEXTS = {
         "btn_reply_story": "↩️ Reply in story",
         "btn_report": "🚫 Report",
         "reported_ok": "Thanks, vibe hidden, sender blocked for 24h.",
-        "reply_story_hint": "Save the card above and post it to your story with a reply. Tag @{bot} so friends ask too 😏",
+        "story_caption": "Someone sent me an anonymous vibe on VYBLA 🖤",
+        "story_widget_name": "VYBLA",
+        "story_fallback": (
+            "Couldn't open the story editor automatically (needs a recent "
+            "mobile Telegram). Save the card above and post it to your "
+            "story manually, tagging: {link}"
+        ),
 
         "vibes_empty": "Empty for now. Drop your link in bio and wait 👀",
         "vibes_header": "Your vibes (page {page}):",

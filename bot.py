@@ -17,6 +17,7 @@ from aiogram.types import (
 
 import db
 import cards
+import avatars
 import binding
 from cache import (
     redis, sender_hash, allow_guest, guest_locked, is_blocked, block_sender,
@@ -53,24 +54,6 @@ class GuestFlow(StatesGroup):
 # --------------------------------------------------------------------------
 # helpers
 # --------------------------------------------------------------------------
-async def _download_avatar(user_id: int) -> str | None:
-    try:
-        photos = await bot.get_user_profile_photos(user_id, limit=1)
-        if not photos.total_count or not photos.photos:
-            return None
-        file_id = photos.photos[0][-1].file_id
-        tg_file = await bot.get_file(file_id)
-        dest = os.path.join(
-            os.environ.get("TMPDIR", cards.tempfile.gettempdir()),
-            f"av_{user_id}.jpg",
-        )
-        await bot.download_file(tg_file.file_path, dest)
-        return dest
-    except Exception as e:  # private avatar, no photo, etc.
-        log.info("avatar fetch failed for %s: %s", user_id, e)
-        return None
-
-
 def _mode_label(mode: str, lang: str) -> str:
     m = MODES.get(mode)
     if not m:
@@ -195,7 +178,7 @@ async def guest_write(message: Message, state: FSMContext):
     await db.increment_vibes(code)
 
     # Build + deliver the card to the OWNER
-    avatar = await _download_avatar(owner["id"])
+    avatar = await avatars.download_avatar(bot, owner["id"])
     card_path = cards.generate_vibe_card(
         text, mode, avatar_path=avatar, watermark=not owner.get("is_premium"),
     )
@@ -205,7 +188,7 @@ async def guest_write(message: Message, state: FSMContext):
             chat_id=owner["id"],
             photo=FSInputFile(card_path),
             caption=t(owner_lang, "new_vibe_caption", text=text),
-            reply_markup=vibe_actions(owner_lang, vibe["id"]),
+            reply_markup=vibe_actions(owner_lang, vibe["id"], owner["link_code"]),
         )
     except Exception as e:
         log.warning("could not deliver to owner %s: %s", owner["id"], e)
@@ -317,17 +300,10 @@ async def cb_buy_premium(cq: CallbackQuery):
 
 
 # --------------------------------------------------------------------------
-# Owner: story hint + report
+# Owner: report
 # --------------------------------------------------------------------------
-@dp.callback_query(F.data.startswith("story:"))
-async def cb_story(cq: CallbackQuery):
-    user = await db.get_user(cq.from_user.id)
-    lang = user["lang"] if user else lang_of(cq.from_user.language_code)
-    from config import BOT_USERNAME
-    await cq.answer()
-    await cq.message.answer(t(lang, "reply_story_hint", bot=BOT_USERNAME))
-
-
+# (Reply-in-story is now a web_app button — see keyboards.vibe_actions and
+# the /story + /card routes in webhook.py — no callback handler needed here.)
 @dp.callback_query(F.data.startswith("report:"))
 async def cb_report(cq: CallbackQuery):
     vibe_id = cq.data.split(":", 1)[1]
