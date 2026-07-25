@@ -10,11 +10,13 @@ import logging
 from aiogram import Bot
 
 from channel import autopost_vibe, post_top, post_group_spotlight
-from editorial import post_editorial, post_poll
+from editorial import post_editorial, post_poll, promote_quiz
 from dialogue import post_dialogue
+from news import post_news
 from config import (
     AUTOPOST_MINUTES, TOP_MINUTES, SPOTLIGHT_MINUTES,
     EDITORIAL_MINUTES, POLL_MINUTES, DIALOGUE_MINUTES,
+    NEWS_MINUTES, QUIZ_PROMO_MINUTES,
 )
 
 log = logging.getLogger("vybla.scheduler")
@@ -48,10 +50,15 @@ def start(bot: Bot) -> None:
         _every(POLL_MINUTES * 60, post_poll, bot, initial_delay=540)))
     _tasks.append(asyncio.create_task(
         _every(DIALOGUE_MINUTES * 60, post_dialogue, bot, initial_delay=660)))
+    _tasks.append(asyncio.create_task(
+        _every(NEWS_MINUTES * 60, post_news, bot, initial_delay=780)))
+    _tasks.append(asyncio.create_task(
+        _every(QUIZ_PROMO_MINUTES * 60, promote_quiz, bot, initial_delay=900)))
     log.info(
-        "scheduler started: autopost=%dm top=%dm spotlight=%dm editorial=%dm poll=%dm dialogue=%dm",
+        "scheduler started: autopost=%dm top=%dm spotlight=%dm editorial=%dm poll=%dm "
+        "dialogue=%dm news=%dm quiz_promo=%dm",
         AUTOPOST_MINUTES, TOP_MINUTES, SPOTLIGHT_MINUTES, EDITORIAL_MINUTES, POLL_MINUTES,
-        DIALOGUE_MINUTES,
+        DIALOGUE_MINUTES, NEWS_MINUTES, QUIZ_PROMO_MINUTES,
     )
 
 

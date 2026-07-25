@@ -19,6 +19,7 @@ import db
 import cards
 import avatars
 import binding
+import quiz
 from cache import (
     redis, sender_hash, allow_guest, guest_locked, is_blocked, block_sender,
     bump_real_activity,
@@ -27,7 +28,7 @@ from filters import moderate
 from payments import send_premium_invoice, PREMIUM_PAYLOAD
 from keyboards import (
     main_menu, guest_modes, vibe_actions, guest_after_send,
-    vibes_pagination, premium_kb,
+    vibes_pagination, premium_kb, quiz_question_kb,
 )
 from config import (
     BOT_TOKEN, REDIS_URL, MAX_VIBE_LEN, FEED_SAMPLE, MODES, ADMIN_ID,
@@ -275,6 +276,56 @@ async def cb_invite(cq: CallbackQuery):
         t(lang, "invite_info", link=link,
           count=user.get("referral_count", 0), goal=REFERRAL_GOAL),
     )
+    await cq.answer()
+
+
+@dp.callback_query(F.data == "quiz_start")
+async def cb_quiz_start(cq: CallbackQuery, state: FSMContext):
+    await state.update_data(quiz_q=0, quiz_answers=[])
+    await _send_quiz_question(cq.message, 0, edit=False)
+    await cq.answer()
+
+
+async def _send_quiz_question(message: Message, q_index: int, edit: bool):
+    q = quiz.QUESTIONS[q_index]
+    text = f"🧠 {quiz.QUIZ_TITLE} ({q_index + 1}/{len(quiz.QUESTIONS)})\n\n{q['q']}"
+    kb = quiz_question_kb(q_index, q["options"])
+    if edit:
+        await message.edit_text(text, reply_markup=kb)
+    else:
+        await message.answer(text, reply_markup=kb)
+
+
+@dp.callback_query(F.data.startswith("quiz:"))
+async def cb_quiz_answer(cq: CallbackQuery, state: FSMContext):
+    _, q_index_str, tag = cq.data.split(":", 2)
+    q_index = int(q_index_str)
+    data = await state.get_data()
+
+    # Guards against stale buttons (e.g. double-tap, or a button from an
+    # old/abandoned quiz message) rather than trusting the callback blindly.
+    if data.get("quiz_q") != q_index:
+        return await cq.answer()
+
+    answers = data.get("quiz_answers", [])
+    answers.append(tag)
+    next_q = q_index + 1
+
+    if next_q < len(quiz.QUESTIONS):
+        await state.update_data(quiz_q=next_q, quiz_answers=answers)
+        await _send_quiz_question(cq.message, next_q, edit=True)
+        await cq.answer()
+        return
+
+    await state.update_data(quiz_q=None, quiz_answers=[])
+    result_tag = quiz.score(answers)
+    result = quiz.RESULTS[result_tag]
+    lang = lang_of(cq.from_user.language_code)
+    user = await db.get_user(cq.from_user.id)
+    if user:
+        lang = user["lang"]
+    text = f"{result['title']}\n\n{result['desc']}{t(lang, 'quiz_result_footer')}"
+    await cq.message.edit_text(text, reply_markup=None)  # explicitly drop the last question's buttons
     await cq.answer()
 
 

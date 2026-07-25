@@ -208,6 +208,43 @@ kept repeating the same one test phrase:
   the same honesty rule as everywhere else in this project. Once real vibes
   accumulate past the threshold, the example bank stops being used entirely.
 
+## Real news (news.py) + interactive quiz (quiz.py)
+Added after feedback that AI banter alone still felt thin for a youth
+audience. Both are genuine content, not fabricated:
+
+**News** — RSS aggregation posted to the channel as headline + link back to
+the source (never full-text reproduction — copyright, and it's honest
+attribution instead of pretending to be original content). Sources were
+picked by actually curling ~15 candidate RU and US publications and reading
+real `<item>` entries, not guessed:
+- RU: only `knife.media/feed/` worked (wonderzine, psychologies.ru, mel.fm,
+  cosmo.ru, batenka.ru, the-village all 404'd/timed out/served an antibot
+  page). It's a general feed, filtered client-side by category relevance.
+- US, youth/relationships: `refinery29.com` and `cosmopolitan.com` both have
+  real dedicated `/relationships/` RSS feeds — verified genuinely on-topic
+  ("invisible string theory", "chronically single for a decade"). Note:
+  `bustle.com/rss/relationships` LOOKS like a match by URL but is actually
+  celebrity/wedding news underneath — checked and excluded.
+- English titles are translated to Russian live via OpenRouter
+  (`OPENROUTER_MODEL_TRANSLATE`, defaults to the same deepseek model already
+  verified for coherent Russian); translation failure falls back to posting
+  the original English title rather than blocking the post — still honest
+  content, just less polished. Posted links are deduplicated via a Redis set
+  for 30 days so the same story doesn't repeat. Cadence: `NEWS_MINUTES`
+  (default 150).
+
+**Quiz** — a real multi-question personality test with a computed result
+(`quiz.py` + FSM handlers in `bot.py`), not a single Telegram poll. Tied
+directly to VYBLA's own mechanic (how you react to anonymous vibes: Детектив
+/ Скептик / Коллекционер / Хаотичное нейтральное) instead of generic
+Buzzfeed-style filler, so it reads as on-brand rather than bolted on.
+Reachable from the main menu (**🧠 Тест**) and promoted periodically to the
+group (`promote_quiz` in `editorial.py`, cadence `QUIZ_PROMO_MINUTES`,
+default 240). Scoring picks the most-answered result type, breaking ties
+randomly among the tied leaders — verified directly (a genuine 2-2-1 tie
+split ~50/50 between the two leaders across 200 runs, the non-tied option
+never selected).
+
 ## Why no `userbot.py` / `gen_session.py`
 These were requested but intentionally omitted: they automate a **user account**,
 which gets that account banned. All the autonomy they were meant to provide

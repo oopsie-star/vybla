@@ -15,6 +15,7 @@ import random
 from aiogram import Bot
 
 import binding
+import quiz
 from config import BOT_USERNAME
 
 log = logging.getLogger("vybla.editorial")
@@ -94,3 +95,21 @@ async def post_poll(bot: Bot) -> None:
         await bot.send_poll(int(gid), question=question, options=options, is_anonymous=True)
     except Exception as e:
         log.warning("poll post failed: %s", e)
+
+
+_QUIZ_PROMO_CAPTIONS = [
+    "🧠 Тест: {title}\n\nпройди за минуту → @{bot}",
+    "какой ты тип во вайбах? узнай за 5 вопросов → @{bot}",
+    "🧠 короткий тест, который реально про тебя → @{bot}",
+]
+
+
+async def promote_quiz(bot: Bot) -> None:
+    gid = binding.group_id()
+    if not gid:
+        return
+    text = random.choice(_QUIZ_PROMO_CAPTIONS).format(title=quiz.QUIZ_TITLE, bot=BOT_USERNAME)
+    try:
+        await bot.send_message(int(gid), text)
+    except Exception as e:
+        log.warning("quiz promo post failed: %s", e)

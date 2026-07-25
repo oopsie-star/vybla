@@ -54,6 +54,8 @@ TOP_MINUTES = int(os.getenv("TOP_MINUTES", "60"))            # group leaderboard
 SPOTLIGHT_MINUTES = int(os.getenv("SPOTLIGHT_MINUTES", "120"))  # group discussion-card cadence
 EDITORIAL_MINUTES = int(os.getenv("EDITORIAL_MINUTES", "90"))   # channel fact/tip cadence
 POLL_MINUTES = int(os.getenv("POLL_MINUTES", "180"))             # group native-poll cadence
+NEWS_MINUTES = int(os.getenv("NEWS_MINUTES", "150"))             # channel real-news cadence
+QUIZ_PROMO_MINUTES = int(os.getenv("QUIZ_PROMO_MINUTES", "240")) # group quiz-promo cadence
 
 # AI "banter" between two on-brand characters (Ева/Макс), posted to the group
 # as a single formatted dialogue by the bot — not simulated separate accounts.
@@ -70,6 +72,10 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 # being set as defaults — change freely via env vars, no code edits needed.
 OPENROUTER_MODEL_FEMALE = os.getenv("OPENROUTER_MODEL_FEMALE", "xiaomi/mimo-v2.5")
 OPENROUTER_MODEL_MALE = os.getenv("OPENROUTER_MODEL_MALE", "deepseek/deepseek-v4-flash")
+# Used to translate English news headlines to Russian (see news.py). Same
+# model already verified to produce coherent Russian for the dialogue
+# feature, reused here rather than adding a third untested default.
+OPENROUTER_MODEL_TRANSLATE = os.getenv("OPENROUTER_MODEL_TRANSLATE", "deepseek/deepseek-v4-flash")
 # When True, non-link messages in the funnel group are removed. Set GROUP_STRICT=0
 # to only remove foreign links/@handles and allow normal chat.
 GROUP_STRICT = os.getenv("GROUP_STRICT", "1") == "1"
@@ -102,6 +108,8 @@ TEXTS = {
         "btn_feed": "🌍 Лента",
         "btn_premium": "⭐️ Premium",
         "btn_invite": "🎁 Пригласить друзей",
+        "btn_quiz": "🧠 Тест",
+        "quiz_result_footer": "\n\nПройти ещё раз или узнать свою ссылку → /start",
 
         "invite_info": (
             "🎁 Приглашай — получай Premium бесплатно\n\n"
@@ -186,6 +194,8 @@ TEXTS = {
         "btn_feed": "🌍 Feed",
         "btn_premium": "⭐️ Premium",
         "btn_invite": "🎁 Invite friends",
+        "btn_quiz": "🧠 Quiz",
+        "quiz_result_footer": "\n\nTake it again or get your link → /start",
 
         "invite_info": (
             "🎁 Invite friends — get Premium free\n\n"

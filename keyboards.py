@@ -18,6 +18,7 @@ def main_menu(lang: str, code: str, unread: int) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text=t(lang, "btn_duel"), callback_data="duel")],
         [InlineKeyboardButton(text=t(lang, "btn_feed"), callback_data="feed")],
         [InlineKeyboardButton(text=t(lang, "btn_invite"), callback_data="invite")],
+        [InlineKeyboardButton(text=t(lang, "btn_quiz"), callback_data="quiz_start")],
         [InlineKeyboardButton(text=t(lang, "btn_premium"), callback_data="premium")],
     ])
 
@@ -56,6 +57,13 @@ def vibes_pagination(lang: str, page: int, has_next: bool) -> InlineKeyboardMark
     if has_next:
         row.append(InlineKeyboardButton(text=t(lang, "btn_next"), callback_data=f"my_vibes:{page+1}"))
     return InlineKeyboardMarkup(inline_keyboard=[row] if row else [])
+
+
+def quiz_question_kb(q_index: int, options: list[tuple[str, str]]) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=label, callback_data=f"quiz:{q_index}:{tag}")]
+        for label, tag in options
+    ])
 
 
 def premium_kb(lang: str) -> InlineKeyboardMarkup:
